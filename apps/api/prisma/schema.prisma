@@ -1,0 +1,241 @@
+// CloudCost Sentinel — Database schema
+// Every model maps back to Organization (directly or through a chain) —
+// that chain is what makes multi-tenancy work in every query we write later.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RoleName {
+  SUPER_ADMIN
+  ORG_ADMIN
+  FINANCE_MANAGER
+  CLOUD_ENGINEER
+  DEVELOPER
+  VIEWER
+}
+
+enum CloudProvider {
+  AWS
+  AZURE
+  GCP
+}
+
+enum ResourceType {
+  VIRTUAL_MACHINE
+  DATABASE
+  STORAGE_BUCKET
+  LOAD_BALANCER
+  KUBERNETES_CLUSTER
+  SERVERLESS_FUNCTION
+}
+
+enum AlertType {
+  COST_SPIKE
+  BUDGET_EXCEEDED
+  IDLE_RESOURCE
+  HIGH_CPU_COST
+  STORAGE_INCREASE
+}
+
+enum AlertStatus {
+  OPEN
+  ACKNOWLEDGED
+  RESOLVED
+}
+
+enum BudgetScope {
+  ORGANIZATION
+  DEPARTMENT
+  CLOUD_ACCOUNT
+}
+
+model Organization {
+  id            String         @id @default(uuid())
+  name          String
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  users         User[]
+  cloudAccounts CloudAccount[]
+  budgets       Budget[]
+  auditLogs     AuditLog[]
+  reports       Report[]
+
+  @@map("organizations")
+}
+
+model User {
+  id              String         @id @default(uuid())
+  email           String         @unique
+  passwordHash    String
+  firstName       String
+  lastName        String
+  role            RoleName       @default(VIEWER)
+  isEmailVerified Boolean        @default(false)
+  organizationId  String
+  organization    Organization   @relation(fields: [organizationId], references: [id])
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  sessions        Session[]
+  refreshTokens   RefreshToken[]
+  notifications   Notification[]
+  auditLogs       AuditLog[]
+  reports         Report[]
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  @@map("sessions")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  tokenHash String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  revoked   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  @@map("refresh_tokens")
+}
+
+model CloudAccount {
+  id             String        @id @default(uuid())
+  provider       CloudProvider
+  accountName    String
+  credentialsRef String
+  organizationId String
+  organization   Organization  @relation(fields: [organizationId], references: [id])
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  resources      Resource[]
+
+  @@map("cloud_accounts")
+}
+
+model Resource {
+  id              String           @id @default(uuid())
+  externalId      String
+  name            String
+  type            ResourceType
+  region          String?
+  cloudAccountId  String
+  cloudAccount    CloudAccount     @relation(fields: [cloudAccountId], references: [id])
+  createdAt       DateTime         @default(now())
+
+  costRecords     CostRecord[]
+  alerts          Alert[]
+  recommendations Recommendation[]
+
+  @@map("resources")
+}
+
+model CostRecord {
+  id         String   @id @default(uuid())
+  resourceId String
+  resource   Resource @relation(fields: [resourceId], references: [id])
+  date       DateTime
+  amount     Decimal  @db.Decimal(12, 4)
+  currency   String   @default("USD")
+  createdAt  DateTime @default(now())
+
+  @@index([resourceId, date])
+  @@map("cost_records")
+}
+
+model Budget {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  name           String
+  scope          BudgetScope
+  monthlyLimit   Decimal      @db.Decimal(12, 2)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  alerts         Alert[]
+
+  @@map("budgets")
+}
+
+model Alert {
+  id         String      @id @default(uuid())
+  type       AlertType
+  status     AlertStatus @default(OPEN)
+  message    String
+  resourceId String?
+  resource   Resource?   @relation(fields: [resourceId], references: [id])
+  budgetId   String?
+  budget     Budget?     @relation(fields: [budgetId], references: [id])
+  createdAt  DateTime    @default(now())
+  resolvedAt DateTime?
+
+  @@map("alerts")
+}
+
+model Recommendation {
+  id               String   @id @default(uuid())
+  resourceId       String
+  resource         Resource @relation(fields: [resourceId], references: [id])
+  description      String
+  estimatedSavings Decimal  @db.Decimal(12, 2)
+  createdAt        DateTime @default(now())
+
+  @@map("recommendations")
+}
+
+model Report {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  generatedById  String
+  generatedBy    User         @relation(fields: [generatedById], references: [id])
+  format         String
+  fileUrl        String
+  createdAt      DateTime     @default(now())
+
+  @@map("reports")
+}
+
+model AuditLog {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  userId         String
+  user           User         @relation(fields: [userId], references: [id])
+  action         String
+  metadata       Json?
+  createdAt      DateTime     @default(now())
+
+  @@map("audit_logs")
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  title     String
+  body      String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@map("notifications")
+}
