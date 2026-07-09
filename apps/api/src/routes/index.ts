@@ -4,13 +4,19 @@ import authRoutes         from "./auth.routes";
 import dashboardRoutes    from "./dashboard.routes";
 import cloudAccountRoutes from "./cloudaccount.routes";
 import resourceRoutes     from "./resource.routes";
+import budgetRoutes       from "./budget.routes";     // ← new
+import alertRoutes        from "./alert.routes";      // ← new
+import analyticsRoutes    from "./analytics.routes";  // ← new
 
 const router = Router();
 
 router.use("/health",         healthRoutes);
 router.use("/auth",           authRoutes);
 router.use("/dashboard",      dashboardRoutes);
-router.use("/cloud-accounts", cloudAccountRoutes);  // ← new
-router.use("/resources",      resourceRoutes);      // ← new
+router.use("/cloud-accounts", cloudAccountRoutes);
+router.use("/resources",      resourceRoutes);
+router.use("/budgets",        budgetRoutes);          // ← new
+router.use("/alerts",         alertRoutes);           // ← new
+router.use("/analytics",      analyticsRoutes);       // ← new
 
 export default router;
