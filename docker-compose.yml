@@ -29,18 +29,37 @@ services:
       timeout: 5s
       retries: 5
 
+  ml-service:                        # ← new
+    build:
+      context: ./apps/api/ml-service
+    container_name: cloudcost-ml
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
   api:
     build:
       context: ./apps/api
     container_name: cloudcost-api
     env_file:
       - ./apps/api/.env
+    environment:
+      # Tells the Express API where to find the ML service inside Docker.
+      # "ml-service" is the Docker service name — Docker's internal DNS
+      # resolves it to the ml-service container's IP automatically.
+      ML_SERVICE_URL: http://ml-service:8000
     ports:
       - "4000:4000"
     depends_on:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      ml-service:
         condition: service_healthy
 
 volumes:

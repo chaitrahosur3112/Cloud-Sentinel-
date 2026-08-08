@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.env
+
+# Python
+apps/api/ml-service/venv/
+apps/api/ml-service/.venv/
+__pycache__/
+*.pyc
+
+# Logs
+*.log

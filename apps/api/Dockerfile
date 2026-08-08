@@ -1,17 +1,28 @@
-# Why these specific steps, in this order: Docker caches each layer.
-# Copying package*.json and installing deps BEFORE copying the rest of the
-# source means "npm install" is only re-run when dependencies actually
-# change, not on every single code edit — much faster rebuilds.
+FROM node:20-bookworm-slim
 
-FROM node:20-alpine AS base
 WORKDIR /usr/src/app
 
+# OpenSSL is required by Prisma
+RUN apt-get update \
+    && apt-get install -y openssl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy dependency files first
 COPY package*.json ./
+
+# Copy Prisma schema
 COPY prisma ./prisma
+
+# Install dependencies
 RUN npm install
 
+# Copy application source
 COPY . .
+
+# Generate Prisma Client inside the Debian-based container
 RUN npx prisma generate
+
+# Build the Express/TypeScript API
 RUN npm run build
 
 EXPOSE 4000
