@@ -1,11 +1,17 @@
 node_modules/
 dist/
 .env
+
+# Logs
 *.log
 coverage/
+
 # Python virtual environment
 apps/api/ml-service/venv/
 
 # Python cache
 apps/api/ml-service/__pycache__/
 *.pyc
+
+# Generated reports
+uploads/

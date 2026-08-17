@@ -7,7 +7,8 @@ import resourceRoutes     from "./resource.routes";
 import budgetRoutes       from "./budget.routes";
 import alertRoutes        from "./alert.routes";
 import analyticsRoutes    from "./analytics.routes";
-import aiRoutes           from "./ai.routes";      // ← new
+import aiRoutes           from "./ai.routes";
+import reportRoutes       from "./report.routes";   // ← new
 
 const router = Router();
 
@@ -19,6 +20,7 @@ router.use("/resources",      resourceRoutes);
 router.use("/budgets",        budgetRoutes);
 router.use("/alerts",         alertRoutes);
 router.use("/analytics",      analyticsRoutes);
-router.use("/ai",             aiRoutes);           // ← new
+router.use("/ai",             aiRoutes);
+router.use("/reports",        reportRoutes);        // ← new
 
 export default router;

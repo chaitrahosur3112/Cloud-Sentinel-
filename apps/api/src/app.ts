@@ -17,7 +17,8 @@ export function createApp(): Application {
     credentials: true, // Required so the browser sends the httpOnly refresh-token cookie cross-origin
   }));
   app.use(express.json());
-  app.use(cookieParser());   // Parses cookies into req.cookies — needed for refresh token
+  app.use(cookieParser()); // Parses cookies into req.cookies — needed for refresh token
+  app.use("/uploads", express.static("uploads"));
   app.use(morgan(env.isProduction ? "combined" : "dev"));
 
   app.use("/api/v1", routes);
