@@ -1,22 +1,23 @@
-version: "3.9"
+# Development compose — hot reload, ports exposed, verbose logging.
+# Use: docker-compose up
 
 services:
   postgres:
     image: postgres:16-alpine
     container_name: cloudcost-postgres
     environment:
-      POSTGRES_USER: cloudcost
+      POSTGRES_USER:     cloudcost
       POSTGRES_PASSWORD: cloudcost
-      POSTGRES_DB: cloudcost_sentinel
+      POSTGRES_DB:       cloudcost_sentinel
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U cloudcost"]
+      test:     ["CMD-SHELL", "pg_isready -U cloudcost"]
       interval: 5s
-      timeout: 5s
-      retries: 5
+      timeout:  5s
+      retries:  5
 
   redis:
     image: redis:7-alpine
@@ -24,36 +25,38 @@ services:
     ports:
       - "6379:6379"
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test:     ["CMD", "redis-cli", "ping"]
       interval: 5s
-      timeout: 5s
-      retries: 5
+      timeout:  5s
+      retries:  5
 
-  ml-service:                        # ← new
+  ml-service:
     build:
-      context: ./apps/api/ml-service
+      context:    ./apps/ml-service
+      target:     runner
     container_name: cloudcost-ml
     ports:
       - "8000:8000"
+    restart: unless-stopped
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
+      test:         ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\""]
+      interval:     30s
+      timeout:      10s
+      start_period: 60s
+      retries:      3
+
   api:
     build:
       context: ./apps/api
+      target:  runner
     container_name: cloudcost-api
     env_file:
       - ./apps/api/.env
     environment:
-      # Tells the Express API where to find the ML service inside Docker.
-      # "ml-service" is the Docker service name — Docker's internal DNS
-      # resolves it to the ml-service container's IP automatically.
       ML_SERVICE_URL: http://ml-service:8000
     ports:
       - "4000:4000"
+    restart: unless-stopped
     depends_on:
       postgres:
         condition: service_healthy
@@ -61,15 +64,23 @@ services:
         condition: service_healthy
       ml-service:
         condition: service_healthy
+    healthcheck:
+      test:         ["CMD-SHELL", "wget -qO- http://localhost:4000/api/v1/health || exit 1"]
+      interval:     30s
+      timeout:      5s
+      start_period: 30s
+      retries:      3
 
-volumes:
-  postgres_data:
-
-web:
+  web:
     build:
       context: ./apps/web
+      target:  runner
     container_name: cloudcost-web
     ports:
       - "3000:3000"
+    restart: unless-stopped
     depends_on:
-      - api  
+      - api
+
+volumes:
+  postgres_data:

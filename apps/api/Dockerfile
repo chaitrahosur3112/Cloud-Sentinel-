@@ -1,30 +1,58 @@
-FROM node:20-bookworm-slim
+# ---- Stage 1: Build ----
+FROM node:20-alpine AS builder
 
-WORKDIR /usr/src/app
+WORKDIR /app
 
-# OpenSSL is required by Prisma
-RUN apt-get update \
-    && apt-get install -y openssl \
-    && rm -rf /var/lib/apt/lists/*
+# Prisma needs OpenSSL during client generation
+RUN apk add --no-cache openssl
 
 # Copy dependency files first
 COPY package*.json ./
-
-# Copy Prisma schema
 COPY prisma ./prisma
 
-# Install dependencies
-RUN npm install
+RUN npm ci
+
+# Generate Prisma client with OpenSSL 3 available
+RUN npx prisma generate
 
 # Copy application source
 COPY . .
 
-# Generate Prisma Client inside the Debian-based container
-RUN npx prisma generate
-
-# Build the Express/TypeScript API
+# Build TypeScript
 RUN npm run build
+
+
+# ---- Stage 2: Production ----
+FROM node:20-alpine AS runner
+
+# Prisma runtime also needs OpenSSL
+RUN apk add --no-cache openssl
+
+# Create non-root user
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+
+WORKDIR /app
+
+# Copy application files
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/prisma ./prisma
+
+# Copy generated Prisma client
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+
+# Install production dependencies
+RUN npm ci --omit=dev
+
+# Give ownership to non-root user
+RUN chown -R appuser:appgroup /app
+
+USER appuser
 
 EXPOSE 4000
 
-CMD ["npm", "run", "start"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+  CMD wget -qO- http://localhost:4000/api/v1/health || exit 1
+
+CMD ["node", "dist/server.js"]

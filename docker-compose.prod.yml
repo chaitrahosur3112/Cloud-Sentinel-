@@ -1,0 +1,54 @@
+# Production compose — stricter settings, no source mounts,
+# secrets via environment, restart always.
+# Use: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+version: "3.9"
+
+services:
+  postgres:
+    restart: always
+    # In production, don't expose Postgres to the host — only the API needs it.
+    # Remove the 'ports' section so it's only accessible inside the Docker network.
+    ports: !reset []
+    environment:
+      POSTGRES_USER:     ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB:       ${DB_NAME}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # Mount a custom postgres.conf for production tuning
+      - ./infra/postgres.conf:/etc/postgresql/postgresql.conf
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf
+
+  redis:
+    restart: always
+    ports: !reset []
+    # Require a password in production
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+
+  ml-service:
+    restart: always
+    ports: !reset []     # only accessible from the api service inside Docker
+
+  api:
+    restart: always
+    environment:
+      NODE_ENV:           production
+      DATABASE_URL:       postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}?schema=public
+      REDIS_URL:          redis://:${REDIS_PASSWORD}@redis:6379
+      ML_SERVICE_URL:     http://ml-service:8000
+      ACCESS_TOKEN_SECRET:  ${ACCESS_TOKEN_SECRET}
+      REFRESH_TOKEN_SECRET: ${REFRESH_TOKEN_SECRET}
+      FRONTEND_URL:         ${FRONTEND_URL}
+      SMTP_HOST:            ${SMTP_HOST}
+      SMTP_PORT:            ${SMTP_PORT}
+      SMTP_USER:            ${SMTP_USER}
+      SMTP_PASS:            ${SMTP_PASS}
+    # No env_file in production — all secrets come from environment variables
+    # set by your deployment system (GitHub Actions, AWS ECS task definition, etc.)
+
+  web:
+    restart: always
+
+volumes:
+  postgres_data:
