@@ -128,9 +128,9 @@ jobs:
           flake8 app/ --count --exit-zero --max-complexity=10 --max-line-length=100 --statistics
 
       - name: Run tests
-        run: |
-          pip install pytest pytest-asyncio httpx
-          pytest tests/ -v
+  run: |
+    pip install pytest pytest-asyncio httpx
+    PYTHONPATH=. pytest tests/ -v
 
   # ─────────────────────────────────────────────
   # Job 3: Web — TypeScript type-check
