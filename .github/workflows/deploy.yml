@@ -1,0 +1,52 @@
+# Deploy — runs after Build succeeds.
+# SSHes into EC2 and runs a deploy script that pulls new images
+# and restarts containers with zero downtime.
+
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: [Build & Push]
+    types:     [completed]
+    branches:  [main]
+
+jobs:
+  deploy:
+    name: Deploy to EC2
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          # Add the server to known_hosts so SSH doesn't prompt
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Copy deploy script to EC2
+        run: |
+          scp infra/deploy.sh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:~/deploy.sh
+          scp docker-compose.yml ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:~/cloudcost/docker-compose.yml
+          scp docker-compose.prod.yml ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:~/cloudcost/docker-compose.prod.yml
+
+      - name: Run deploy script on EC2
+        run: |
+          ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "
+            chmod +x ~/deploy.sh && ~/deploy.sh
+          "
+        env:
+          # These are passed through to the deploy script as env vars
+          DOCKERHUB_USERNAME:     ${{ secrets.DOCKERHUB_USERNAME }}
+          DB_USER:                ${{ secrets.DB_USER }}
+          DB_PASSWORD:            ${{ secrets.DB_PASSWORD }}
+          DB_NAME:                ${{ secrets.DB_NAME }}
+          REDIS_PASSWORD:         ${{ secrets.REDIS_PASSWORD }}
+          ACCESS_TOKEN_SECRET:    ${{ secrets.ACCESS_TOKEN_SECRET }}
+          REFRESH_TOKEN_SECRET:   ${{ secrets.REFRESH_TOKEN_SECRET }}
+          FRONTEND_URL:           ${{ secrets.FRONTEND_URL }}
+          IMAGE_TAG:              ${{ github.sha }}
