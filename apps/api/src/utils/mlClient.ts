@@ -2,8 +2,8 @@
 // All other files call functions from here — if the ML service URL
 // changes, only this file changes.
 // We use Node's built-in fetch (available since Node 18).
-
-const ML_SERVICE_URL = process.env.ML_SERVICE_URL ?? "http://localhost:8000";
+import { env } from "../config/env";
+const ML_SERVICE_URL = env.mlServiceUrl;
 
 export interface CostDataPoint {
   date:   string;

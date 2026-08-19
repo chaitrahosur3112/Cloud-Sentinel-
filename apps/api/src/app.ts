@@ -13,7 +13,7 @@ export function createApp(): Application {
 
   app.use(helmet());
   app.use(cors({
-    origin: process.env.FRONTEND_URL ?? "http://localhost:3000",
+    origin: env.frontendUrl,
     credentials: true, // Required so the browser sends the httpOnly refresh-token cookie cross-origin
   }));
   app.use(express.json());

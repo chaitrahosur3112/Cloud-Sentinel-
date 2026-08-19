@@ -2,16 +2,13 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-// Why this file exists: every other file in the app should ask THIS file
-// for config values, never call process.env directly. That gives us one
-// place to validate required vars are present, and one place to change
-// if a var name ever changes.
-
 function required(name: string): string {
   const value = process.env[name];
+
   if (!value) {
     throw new Error(`Missing required environment variable: ${name}`);
   }
+
   return value;
 }
 
@@ -24,8 +21,18 @@ export const env = {
 
   accessTokenSecret: required("ACCESS_TOKEN_SECRET"),
   refreshTokenSecret: required("REFRESH_TOKEN_SECRET"),
-  accessTokenExpiresIn: process.env.ACCESS_TOKEN_EXPIRES_IN ?? "15m",
-  refreshTokenExpiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN ?? "7d",
+
+  accessTokenExpiresIn:
+    process.env.ACCESS_TOKEN_EXPIRES_IN ?? "15m",
+
+  refreshTokenExpiresIn:
+    process.env.REFRESH_TOKEN_EXPIRES_IN ?? "7d",
+
+  frontendUrl:
+    process.env.FRONTEND_URL ?? "http://localhost:3000",
+
+  mlServiceUrl:
+    process.env.ML_SERVICE_URL ?? "http://localhost:8000",
 
   isProduction: process.env.NODE_ENV === "production",
 };
