@@ -9,7 +9,9 @@ import {
   clearCredentials,
 } from "../store/slices/authSlice";
 
-const API_URL = import.meta.env.VITE_API_URL ?? "/api/v1";
+const API_URL =
+  import.meta.env.VITE_API_URL ||
+  "https://cloud-sentinel-production.up.railway.app/api/v1";
 
 export const api = axios.create({
   baseURL: API_URL,
