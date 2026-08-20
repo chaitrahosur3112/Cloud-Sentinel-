@@ -29,7 +29,8 @@ export async function register(dto: RegisterDto) {
   const verifyToken = crypto.randomUUID();
   await repo.saveEmailVerifyToken(user.id, verifyToken);
 
-  const verifyUrl = `http://localhost:4000/api/v1/auth/verify-email?token=${verifyToken}`;
+  const verifyUrl =
+  `${process.env.API_URL}/api/v1/auth/verify-email?token=${verifyToken}`;
   await sendEmail({
     to: user.email, subject: "Verify your CloudCost Sentinel account",
     html: `<h2>Welcome, ${user.firstName}!</h2><p>Verify your email: <a href="${verifyUrl}">Click here</a>. Expires in 1 hour.</p>`,

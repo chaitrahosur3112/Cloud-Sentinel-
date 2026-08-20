@@ -11,6 +11,7 @@ import { env } from "./config/env";
 export function createApp(): Application {
   const app = express();
 
+  app.set("trust proxy", 1); // Required for CORS to work with Express
   app.use(helmet());
   app.use(cors({
     origin: env.frontendUrl,
