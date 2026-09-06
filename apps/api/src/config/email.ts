@@ -11,10 +11,18 @@ export async function sendEmail(options: {
   html: string;
 }): Promise<void> {
   try {
+    if (!process.env.BREVO_API_KEY) {
+      throw new Error("BREVO_API_KEY is not configured");
+    }
+
+    if (!process.env.EMAIL_FROM) {
+      throw new Error("EMAIL_FROM is not configured");
+    }
+
     const result = await brevo.transactionalEmails.sendTransacEmail({
       sender: {
         name: "CloudCost Sentinel",
-        email: process.env.EMAIL_FROM!,
+        email: process.env.EMAIL_FROM,
       },
       to: [
         {
@@ -27,7 +35,7 @@ export async function sendEmail(options: {
 
     logger.info(`Email sent successfully: ${result.messageId}`);
   } catch (error) {
-    logger.error(`Brevo email error: ${error}`);
+    logger.error(`Brevo email error: ${String(error)}`);
     throw error;
   }
 }
