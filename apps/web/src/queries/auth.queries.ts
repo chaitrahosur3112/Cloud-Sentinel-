@@ -2,7 +2,10 @@ import { useMutation } from "react-query";
 import { AxiosError } from "axios";
 import { api } from "../lib/axios";
 import { useDispatch } from "react-redux";
-import { setCredentials, clearCredentials } from "../store/slices/authSlice";
+import {
+  setCredentials,
+  clearCredentials,
+} from "../store/slices/authSlice";
 import { useNavigate } from "react-router-dom";
 import { addToast } from "../store/slices/uiSlice";
 
@@ -12,7 +15,10 @@ type ApiError = {
   };
 };
 
-function getErrorMessage(error: unknown, fallback: string): string {
+function getErrorMessage(
+  error: unknown,
+  fallback: string
+): string {
   const axiosError = error as AxiosError<ApiError>;
 
   return (
@@ -27,8 +33,15 @@ export function useLogin() {
   const navigate = useNavigate();
 
   return useMutation(
-    async (credentials: { email: string; password: string }) => {
-      const { data } = await api.post("/auth/login", credentials);
+    async (credentials: {
+      email: string;
+      password: string;
+    }) => {
+      const { data } = await api.post(
+        "/auth/login",
+        credentials
+      );
+
       return data.data;
     },
     {
@@ -47,7 +60,10 @@ export function useLogin() {
         dispatch(
           addToast({
             type: "error",
-            message: getErrorMessage(error, "Login failed"),
+            message: getErrorMessage(
+              error,
+              "Login failed"
+            ),
           })
         );
       },
@@ -56,7 +72,6 @@ export function useLogin() {
 }
 
 export function useRegister() {
-  const navigate = useNavigate();
   const dispatch = useDispatch();
 
   return useMutation(
@@ -67,7 +82,11 @@ export function useRegister() {
       email: string;
       password: string;
     }) => {
-      const { data } = await api.post("/auth/register", dto);
+      const { data } = await api.post(
+        "/auth/register",
+        dto
+      );
+
       return data.data;
     },
 
@@ -81,7 +100,9 @@ export function useRegister() {
           })
         );
 
-        navigate("/login");
+        // IMPORTANT:
+        // Do NOT navigate to login here.
+        // RegisterPage will show the email verification screen.
       },
 
       onError: (error) => {
@@ -178,7 +199,8 @@ export function useResetPassword() {
         dispatch(
           addToast({
             type: "success",
-            message: "Password reset! Please log in.",
+            message:
+              "Password reset! Please log in.",
           })
         );
 
