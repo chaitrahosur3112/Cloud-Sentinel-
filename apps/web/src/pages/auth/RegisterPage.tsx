@@ -13,6 +13,8 @@ export function RegisterPage() {
     password: "",
   });
 
+  const [registrationSuccess, setRegistrationSuccess] = useState(false);
+
   const {
     mutate: register,
     isLoading,
@@ -39,9 +41,65 @@ export function RegisterPage() {
   };
 
   const handleRegister = () => {
-    register(form);
+    register(form, {
+      onSuccess: () => {
+        setRegistrationSuccess(true);
+      },
+    });
   };
 
+  // -----------------------------------------
+  // SUCCESS / EMAIL VERIFICATION SCREEN
+  // -----------------------------------------
+  if (registrationSuccess) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 p-4">
+        <div className="w-full max-w-md">
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-8 shadow-sm text-center">
+
+            {/* Success icon */}
+            <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
+              <span className="text-3xl">✓</span>
+            </div>
+
+            <h1 className="text-2xl font-bold">
+              Account created successfully!
+            </h1>
+
+            <p className="text-gray-500 mt-3">
+              We've sent a verification email to:
+            </p>
+
+            <p className="font-medium mt-2 break-all">
+              {form.email}
+            </p>
+
+            <p className="text-gray-500 mt-4 text-sm leading-6">
+              Please check your inbox and click the verification link
+              to verify your email address before signing in.
+            </p>
+
+            <div className="mt-6">
+              <Link
+                to="/login"
+                className="inline-flex w-full items-center justify-center rounded-md bg-blue-600 px-4 py-3 text-sm font-medium text-white hover:bg-blue-700"
+              >
+                Go to Login
+              </Link>
+            </div>
+
+            <p className="text-xs text-gray-400 mt-4">
+              Didn't receive the email? Check your spam folder.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // -----------------------------------------
+  // REGISTRATION FORM
+  // -----------------------------------------
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 p-4">
       <div className="w-full max-w-md">
@@ -68,7 +126,6 @@ export function RegisterPage() {
           />
 
           <div className="grid grid-cols-2 gap-3">
-
             <Input
               label="First name"
               value={form.firstName}
@@ -82,7 +139,6 @@ export function RegisterPage() {
               onChange={set("lastName")}
               placeholder="Doe"
             />
-
           </div>
 
           <Input
@@ -102,7 +158,7 @@ export function RegisterPage() {
           />
 
           {/* API ERROR */}
-          { !!error && (
+          {!!error && (
             <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
               {getErrorMessage()}
             </div>
