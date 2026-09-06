@@ -21,9 +21,20 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
 
 export const verifyEmail = asyncHandler(async (req: Request, res: Response) => {
   const { token } = req.query as { token: string };
-  if (!token) { res.status(400).json({ success: false, error: { message: "Token is required" } }); return; }
-  const result = await authService.verifyEmail(token);
-  res.status(200).json({ success: true, data: result });
+  if (!token) {
+    res.status(400).json({
+      success: false,
+      error: { message: "Token is required" },
+    });
+    return;
+  }
+
+  await authService.verifyEmail(token);
+
+  // Redirect to login page with a success flag
+  // The login page shows a "Email verified!" banner when it sees ?verified=true
+  const frontendUrl = process.env.FRONTEND_URL ?? "http://localhost:3000";
+  res.redirect(`${frontendUrl}/login?verified=true`);
 });
 
 export const login = asyncHandler(async (req: Request, res: Response) => {

@@ -1,122 +1,68 @@
 import { useMutation } from "react-query";
-import { AxiosError } from "axios";
 import { api } from "../lib/axios";
 import { useDispatch } from "react-redux";
-import {
-  setCredentials,
-  clearCredentials,
-} from "../store/slices/authSlice";
+import { setCredentials, clearCredentials } from "../store/slices/authSlice";
 import { useNavigate } from "react-router-dom";
 import { addToast } from "../store/slices/uiSlice";
-
-type ApiError = {
-  error?: {
-    message?: string;
-  };
-};
-
-function getErrorMessage(
-  error: unknown,
-  fallback: string
-): string {
-  const axiosError = error as AxiosError<ApiError>;
-
-  return (
-    axiosError.response?.data?.error?.message ??
-    axiosError.message ??
-    fallback
-  );
-}
 
 export function useLogin() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
   return useMutation(
-    async (credentials: {
-      email: string;
-      password: string;
-    }) => {
-      const { data } = await api.post(
-        "/auth/login",
-        credentials
-      );
-
+    async (credentials: { email: string; password: string }) => {
+      const { data } = await api.post("/auth/login", credentials);
       return data.data;
     },
     {
       onSuccess: (data) => {
-        dispatch(
-          setCredentials({
-            user: data.user,
-            accessToken: data.accessToken,
-          })
-        );
-
+        dispatch(setCredentials({
+          user:        data.user,
+          accessToken: data.accessToken,
+        }));
         navigate("/dashboard");
       },
-
-      onError: (error) => {
-        dispatch(
-          addToast({
-            type: "error",
-            message: getErrorMessage(
-              error,
-              "Login failed"
-            ),
-          })
-        );
+      onError: (error: {
+        response?: { data?: { error?: { message?: string } } };
+      }) => {
+        dispatch(addToast({
+          type:    "error",
+          message: error.response?.data?.error?.message ?? "Login failed",
+        }));
       },
     }
   );
 }
 
-export function useRegister() {
+export function useRegister(options?: { onSuccess?: () => void }) {
   const dispatch = useDispatch();
 
   return useMutation(
     async (dto: {
       organizationName: string;
-      firstName: string;
-      lastName: string;
-      email: string;
-      password: string;
+      firstName:        string;
+      lastName:         string;
+      email:            string;
+      password:         string;
     }) => {
-      const { data } = await api.post(
-        "/auth/register",
-        dto
-      );
-
+      const { data } = await api.post("/auth/register", dto);
       return data.data;
     },
-
     {
       onSuccess: () => {
-        dispatch(
-          addToast({
-            type: "success",
-            message:
-              "Registration successful! Please check your email.",
-          })
-        );
-
-        // IMPORTANT:
-        // Do NOT navigate to login here.
-        // RegisterPage will show the email verification screen.
+        dispatch(addToast({
+          type:    "success",
+          message: "Account created! Please check your email to verify.",
+        }));
+        options?.onSuccess?.();
       },
-
-      onError: (error) => {
-        const message = getErrorMessage(
-          error,
-          "Registration failed"
-        );
-
-        dispatch(
-          addToast({
-            type: "error",
-            message,
-          })
-        );
+      onError: (error: {
+        response?: { data?: { error?: { message?: string } } };
+      }) => {
+        dispatch(addToast({
+          type:    "error",
+          message: error.response?.data?.error?.message ?? "Registration failed",
+        }));
       },
     }
   );
@@ -144,34 +90,21 @@ export function useForgotPassword() {
 
   return useMutation(
     async (email: string) => {
-      const { data } = await api.post(
-        "/auth/forgot-password",
-        { email }
-      );
-
+      const { data } = await api.post("/auth/forgot-password", { email });
       return data.data;
     },
-
     {
       onSuccess: (data) => {
-        dispatch(
-          addToast({
-            type: "success",
-            message: data.message,
-          })
-        );
+        dispatch(addToast({
+          type:    "success",
+          message: data.message,
+        }));
       },
-
-      onError: (error) => {
-        dispatch(
-          addToast({
-            type: "error",
-            message: getErrorMessage(
-              error,
-              "Failed to send reset email"
-            ),
-          })
-        );
+      onError: () => {
+        dispatch(addToast({
+          type:    "error",
+          message: "Failed to send reset email. Please try again.",
+        }));
       },
     }
   );
@@ -182,41 +115,23 @@ export function useResetPassword() {
   const dispatch = useDispatch();
 
   return useMutation(
-    async (dto: {
-      token: string;
-      newPassword: string;
-    }) => {
-      const { data } = await api.post(
-        "/auth/reset-password",
-        dto
-      );
-
+    async (dto: { token: string; newPassword: string }) => {
+      const { data } = await api.post("/auth/reset-password", dto);
       return data.data;
     },
-
     {
       onSuccess: () => {
-        dispatch(
-          addToast({
-            type: "success",
-            message:
-              "Password reset! Please log in.",
-          })
-        );
-
+        dispatch(addToast({
+          type:    "success",
+          message: "Password reset! Please log in.",
+        }));
         navigate("/login");
       },
-
-      onError: (error) => {
-        dispatch(
-          addToast({
-            type: "error",
-            message: getErrorMessage(
-              error,
-              "Password reset failed"
-            ),
-          })
-        );
+      onError: () => {
+        dispatch(addToast({
+          type:    "error",
+          message: "Reset failed. The link may have expired.",
+        }));
       },
     }
   );
