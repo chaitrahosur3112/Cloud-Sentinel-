@@ -34,7 +34,8 @@ export function useLogin() {
   );
 }
 
-export function useRegister(options?: { onSuccess?: () => void }) {
+// NOTE: No navigate() here. The page controls what happens after success.
+export function useRegister() {
   const dispatch = useDispatch();
 
   return useMutation(
@@ -49,13 +50,6 @@ export function useRegister(options?: { onSuccess?: () => void }) {
       return data.data;
     },
     {
-      onSuccess: () => {
-        dispatch(addToast({
-          type:    "success",
-          message: "Account created! Please check your email to verify.",
-        }));
-        options?.onSuccess?.();
-      },
       onError: (error: {
         response?: { data?: { error?: { message?: string } } };
       }) => {
@@ -73,9 +67,7 @@ export function useLogout() {
   const navigate = useNavigate();
 
   return useMutation(
-    async () => {
-      await api.post("/auth/logout");
-    },
+    async () => { await api.post("/auth/logout"); },
     {
       onSettled: () => {
         dispatch(clearCredentials());
@@ -95,14 +87,11 @@ export function useForgotPassword() {
     },
     {
       onSuccess: (data) => {
-        dispatch(addToast({
-          type:    "success",
-          message: data.message,
-        }));
+        dispatch(addToast({ type: "success", message: data.message }));
       },
       onError: () => {
         dispatch(addToast({
-          type:    "error",
+          type: "error",
           message: "Failed to send reset email. Please try again.",
         }));
       },
@@ -121,15 +110,12 @@ export function useResetPassword() {
     },
     {
       onSuccess: () => {
-        dispatch(addToast({
-          type:    "success",
-          message: "Password reset! Please log in.",
-        }));
+        dispatch(addToast({ type: "success", message: "Password reset! Please log in." }));
         navigate("/login");
       },
       onError: () => {
         dispatch(addToast({
-          type:    "error",
+          type: "error",
           message: "Reset failed. The link may have expired.",
         }));
       },
