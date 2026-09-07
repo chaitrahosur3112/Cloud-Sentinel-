@@ -35,33 +35,48 @@ export function useLogin() {
 }
 
 // NOTE: No navigate() here. The page controls what happens after success.
-export function useRegister() {
+export function useRegister(
+  options?: { onSuccess?: () => void }
+) {
   const dispatch = useDispatch();
 
   return useMutation(
     async (dto: {
       organizationName: string;
-      firstName:        string;
-      lastName:         string;
-      email:            string;
-      password:         string;
+      firstName: string;
+      lastName: string;
+      email: string;
+      password: string;
     }) => {
       const { data } = await api.post("/auth/register", dto);
       return data.data;
     },
     {
+      onSuccess: () => {
+        options?.onSuccess?.();
+      },
+
       onError: (error: {
-        response?: { data?: { error?: { message?: string } } };
+        response?: {
+          data?: {
+            error?: {
+              message?: string;
+            };
+          };
+        };
       }) => {
-        dispatch(addToast({
-          type:    "error",
-          message: error.response?.data?.error?.message ?? "Registration failed",
-        }));
+        dispatch(
+          addToast({
+            type: "error",
+            message:
+              error.response?.data?.error?.message ??
+              "Registration failed",
+          })
+        );
       },
     }
   );
 }
-
 export function useLogout() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
