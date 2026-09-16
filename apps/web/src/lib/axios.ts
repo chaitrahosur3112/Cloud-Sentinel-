@@ -1,7 +1,3 @@
-// Central Axios instance.
-// Every API call goes through this — so adding auth headers,
-// handling token refresh, and error normalization happen in one place.
-
 import axios from "axios";
 import { store } from "../store";
 import {
@@ -18,19 +14,17 @@ export const api = axios.create({
   withCredentials: true,
 });
 
-// Request interceptor — attach the access token to every request
 api.interceptors.request.use((config) => {
   const token = store.getState().auth.accessToken;
 
   if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+    config.headers.Authorization =
+      `Bearer ${token}`;
   }
 
   return config;
 });
 
-// Response interceptor — if we get a 401,
-// try refreshing the token once.
 let isRefreshing = false;
 
 api.interceptors.response.use(
@@ -56,9 +50,12 @@ api.interceptors.response.use(
           }
         );
 
-        const newToken = data.data.accessToken as string;
+        const newToken =
+          data.data.accessToken as string;
 
-        store.dispatch(updateAccessToken(newToken));
+        store.dispatch(
+          updateAccessToken(newToken)
+        );
 
         originalRequest.headers.Authorization =
           `Bearer ${newToken}`;
@@ -66,15 +63,18 @@ api.interceptors.response.use(
         isRefreshing = false;
 
         return api(originalRequest);
+
       } catch {
         isRefreshing = false;
 
-        store.dispatch(clearCredentials());
+        store.dispatch(
+          clearCredentials()
+        );
 
         window.location.href = "/login";
       }
     }
 
-    return Promise.reject(error as Error);
+    return Promise.reject(error);
   }
 );

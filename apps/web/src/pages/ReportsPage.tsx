@@ -33,15 +33,14 @@ export function ReportsPage() {
     to: "",
   });
 
-  const [downloadingId, setDownloadingId] = useState<string | null>(null);
-
-  // --------------------------------------------------
+  // ---------------------------------------------------------
   // DOWNLOAD REPORT
-  // --------------------------------------------------
-  const handleDownload = async (id: string, format: string) => {
+  // ---------------------------------------------------------
+  const handleDownload = async (
+    id: string,
+    format: string
+  ) => {
     try {
-      setDownloadingId(id);
-
       const response = await api.get(
         `/reports/${id}/download`,
         {
@@ -49,57 +48,48 @@ export function ReportsPage() {
         }
       );
 
-      // Create temporary URL for downloaded file
-      const blob = new Blob(
-        [response.data],
-        {
-          type:
-  String(response.headers["content-type"] || getMimeType(format)),
-        }
-      );
+      const contentType =
+  typeof response.headers["content-type"] === "string"
+    ? response.headers["content-type"]
+    : getMimeType(format);
 
-      const url = window.URL.createObjectURL(blob);
+      const blob = new Blob([response.data], {
+        type: contentType,
+      });
 
-      // Create temporary download link
-      const link = document.createElement("a");
+      const url =
+        window.URL.createObjectURL(blob);
+
+      const link =
+        document.createElement("a");
+
       link.href = url;
 
-      // Try to get filename from backend
-      const contentDisposition =
-        response.headers["content-disposition"];
-
-      let filename = `cloudcost-report.${getExtension(format)}`;
-
-      if (contentDisposition) {
-        const match = contentDisposition.match(
-          /filename="?([^"]+)"?/i
-        );
-
-        if (match?.[1]) {
-          filename = match[1];
-        }
-      }
-
-      link.setAttribute("download", filename);
+      link.download =
+        `cloudcost-report.${getFileExtension(format)}`;
 
       document.body.appendChild(link);
+
       link.click();
 
-      // Cleanup
-      link.remove();
+      document.body.removeChild(link);
+
       window.URL.revokeObjectURL(url);
     } catch (error) {
-      console.error("Report download failed:", error);
+      console.error(
+        "Report download failed:",
+        error
+      );
 
-      alert("Failed to download report. Please try again.");
-    } finally {
-      setDownloadingId(null);
+      alert(
+        "Failed to download report. Please try again."
+      );
     }
   };
 
-  // --------------------------------------------------
+  // ---------------------------------------------------------
   // MIME TYPE
-  // --------------------------------------------------
+  // ---------------------------------------------------------
   const getMimeType = (format: string) => {
     switch (format) {
       case "PDF":
@@ -116,10 +106,10 @@ export function ReportsPage() {
     }
   };
 
-  // --------------------------------------------------
+  // ---------------------------------------------------------
   // FILE EXTENSION
-  // --------------------------------------------------
-  const getExtension = (format: string) => {
+  // ---------------------------------------------------------
+  const getFileExtension = (format: string) => {
     switch (format) {
       case "PDF":
         return "pdf";
@@ -131,13 +121,13 @@ export function ReportsPage() {
         return "csv";
 
       default:
-        return "file";
+        return "bin";
     }
   };
 
-  // --------------------------------------------------
+  // ---------------------------------------------------------
   // GENERATE REPORT
-  // --------------------------------------------------
+  // ---------------------------------------------------------
   const handleGenerate = () => {
     generate(
       {
@@ -149,17 +139,12 @@ export function ReportsPage() {
         onSuccess: () => {
           setModalOpen(false);
 
-          // Reset form
           setForm({
             type: "COST_SUMMARY",
             format: "PDF",
             from: "",
             to: "",
           });
-        },
-        onError: (error) => {
-          console.error("Report generation failed:", error);
-          alert("Failed to generate report.");
         },
       }
     );
@@ -169,9 +154,10 @@ export function ReportsPage() {
     <div className="space-y-6">
 
       {/* =====================================================
-          PAGE HEADER
+          HEADER
       ====================================================== */}
       <div className="flex items-center justify-between">
+
         <div>
           <h1 className="text-2xl font-bold">
             Reports
@@ -187,6 +173,7 @@ export function ReportsPage() {
         >
           + Generate report
         </Button>
+
       </div>
 
       {/* =====================================================
@@ -194,33 +181,44 @@ export function ReportsPage() {
       ====================================================== */}
 
       {isLoading ? (
+
         <div className="space-y-3">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div
-              key={i}
-              className="h-16 animate-pulse bg-gray-100 dark:bg-gray-800 rounded-xl"
-            />
-          ))}
+
+          {Array.from({ length: 3 }).map(
+            (_, i) => (
+              <div
+                key={i}
+                className="h-16 animate-pulse bg-gray-100 dark:bg-gray-800 rounded-xl"
+              />
+            )
+          )}
+
         </div>
 
       ) : (reports ?? []).length === 0 ? (
 
         <Card>
+
           <p className="text-center text-gray-500 py-8">
-            No reports generated yet. Click "Generate report"
+            No reports generated yet. Click
+            {" "}
+            "Generate report"
+            {" "}
             to create one.
           </p>
+
         </Card>
 
       ) : (
 
         <Card padding={false}>
+
           <div className="overflow-x-auto">
 
             <table className="w-full text-sm">
 
-              {/* TABLE HEADER */}
               <thead>
+
                 <tr className="border-b border-gray-200 dark:border-gray-800">
 
                   {[
@@ -229,18 +227,20 @@ export function ReportsPage() {
                     "Created",
                     "Download",
                   ].map((h) => (
+
                     <th
                       key={h}
                       className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase"
                     >
                       {h}
                     </th>
+
                   ))}
 
                 </tr>
+
               </thead>
 
-              {/* TABLE BODY */}
               <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
 
                 {(reports ?? []).map((r) => (
@@ -252,12 +252,15 @@ export function ReportsPage() {
 
                     {/* FORMAT */}
                     <td className="px-6 py-4">
+
                       <Badge
                         label={r.format}
                         color={
-                          formatColor[r.format] ?? "blue"
+                          formatColor[r.format] ??
+                          "gray"
                         }
                       />
+
                     </td>
 
                     {/* GENERATED BY */}
@@ -267,9 +270,11 @@ export function ReportsPage() {
 
                     {/* CREATED */}
                     <td className="px-6 py-4 text-gray-500">
+
                       {new Date(
                         r.createdAt
                       ).toLocaleString()}
+
                     </td>
 
                     {/* DOWNLOAD */}
@@ -277,22 +282,15 @@ export function ReportsPage() {
 
                       <button
                         type="button"
-                        disabled={downloadingId === r.id}
                         onClick={() =>
                           handleDownload(
                             r.id,
                             r.format
                           )
                         }
-                        className={`text-brand-600 hover:underline text-sm font-medium ${
-                          downloadingId === r.id
-                            ? "opacity-50 cursor-not-allowed"
-                            : "cursor-pointer"
-                        }`}
+                        className="text-brand-600 hover:underline text-sm font-medium cursor-pointer"
                       >
-                        {downloadingId === r.id
-                          ? "Downloading..."
-                          : "Download"}
+                        Download
                       </button>
 
                     </td>
@@ -306,6 +304,7 @@ export function ReportsPage() {
             </table>
 
           </div>
+
         </Card>
 
       )}
@@ -319,12 +318,14 @@ export function ReportsPage() {
         onClose={() => setModalOpen(false)}
         title="Generate Report"
         footer={
+
           <Button
             loading={generating}
             onClick={handleGenerate}
           >
             Generate
           </Button>
+
         }
       >
 
@@ -345,17 +346,21 @@ export function ReportsPage() {
                   type: e.target.value,
                 }))
               }
-              className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700
-                bg-white dark:bg-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
             >
 
               {TYPES.map((t) => (
+
                 <option
                   key={t}
                   value={t}
                 >
-                  {t.replace(/_/g, " ")}
+                  {t.replace(
+                    /_/g,
+                    " "
+                  )}
                 </option>
+
               ))}
 
             </select>
@@ -374,19 +379,29 @@ export function ReportsPage() {
               {FORMATS.map((f) => (
 
                 <button
-                  key={f}
                   type="button"
+                  key={f}
                   onClick={() =>
                     setForm((s) => ({
                       ...s,
                       format: f,
                     }))
                   }
-                  className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
-                    form.format === f
-                      ? "bg-brand-600 text-white border-brand-600"
-                      : "border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
-                  }`}
+                  className={`
+                    px-4 py-2
+                    rounded-lg
+                    text-sm
+                    font-medium
+                    border
+                    transition-colors
+                    cursor-pointer
+
+                    ${
+                      form.format === f
+                        ? "bg-brand-600 text-white border-brand-600"
+                        : "border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+                    }
+                  `}
                 >
                   {f}
                 </button>
@@ -416,8 +431,7 @@ export function ReportsPage() {
                     from: e.target.value,
                   }))
                 }
-                className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700
-                  bg-white dark:bg-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
               />
 
             </div>
@@ -438,8 +452,7 @@ export function ReportsPage() {
                     to: e.target.value,
                   }))
                 }
-                className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700
-                  bg-white dark:bg-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
               />
 
             </div>
