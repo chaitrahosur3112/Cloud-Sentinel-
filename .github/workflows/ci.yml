@@ -1,38 +1,38 @@
 # CI — runs on every push and pull request to main.
-# Fails fast: if any job fails, downstream jobs don't run.
+# Runs API, ML Service, and Web checks.
 
 name: CI
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
   pull_request:
-    branches: [main]
+    branches:
+      - main
 
-# Cancel in-progress runs when a new commit is pushed to the same branch.
-# Saves runner minutes — no point finishing a test run for a commit
-# that's already been superseded.
+# Cancel an older run when a newer commit is pushed.
 concurrency:
-  group:  ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  # ─────────────────────────────────────────────
-  # Job 1: API — TypeScript type-check + tests
-  # ─────────────────────────────────────────────
+
+  # ============================================================
+  # JOB 1: API
+  # ============================================================
+
   api-ci:
     name: API — Type-check & Tests
     runs-on: ubuntu-latest
 
-    # Spin up Postgres and Redis as service containers.
-    # They start before the job steps and are reachable at localhost.
     services:
       postgres:
         image: postgres:16-alpine
         env:
-          POSTGRES_USER:     testuser
+          POSTGRES_USER: testuser
           POSTGRES_PASSWORD: testpass
-          POSTGRES_DB:       cloudcost_test
+          POSTGRES_DB: cloudcost_test
         ports:
           - 5432:5432
         options: >-
@@ -56,6 +56,7 @@ jobs:
         working-directory: apps/api
 
     steps:
+
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -85,18 +86,20 @@ jobs:
       - name: Run tests
         run: npm test
         env:
-          NODE_ENV:               test
-          DATABASE_URL:           postgresql://testuser:testpass@localhost:5432/cloudcost_test?schema=public
-          REDIS_URL:              redis://localhost:6379
-          ACCESS_TOKEN_SECRET:    test-access-secret-32-chars-min
-          REFRESH_TOKEN_SECRET:   test-refresh-secret-32-chars-min
+          NODE_ENV: test
+          DATABASE_URL: postgresql://testuser:testpass@localhost:5432/cloudcost_test?schema=public
+          REDIS_URL: redis://localhost:6379
+          ACCESS_TOKEN_SECRET: test-access-secret-32-chars-min
+          REFRESH_TOKEN_SECRET: test-refresh-secret-32-chars-min
           ACCESS_TOKEN_EXPIRES_IN: 15m
           REFRESH_TOKEN_EXPIRES_IN: 7d
-          ML_SERVICE_URL:         http://localhost:8000
+          ML_SERVICE_URL: http://localhost:8000
 
-  # ─────────────────────────────────────────────
-  # Job 2: ML Service — Python lint + tests
-  # ─────────────────────────────────────────────
+
+  # ============================================================
+  # JOB 2: ML SERVICE
+  # ============================================================
+
   ml-ci:
     name: ML Service — Lint & Tests
     runs-on: ubuntu-latest
@@ -106,6 +109,7 @@ jobs:
         working-directory: apps/ml-service
 
     steps:
+
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -122,21 +126,34 @@ jobs:
       - name: Lint with flake8
         run: |
           pip install flake8
-          # Stop if there are syntax errors or undefined names
-          flake8 app/ --count --select=E9,F63,F7,F82 --show-source --statistics
+
+          # Stop on syntax errors and undefined names
+          flake8 app/ \
+            --count \
+            --select=E9,F63,F7,F82 \
+            --show-source \
+            --statistics
+
           # Warn on style issues but don't fail
-          flake8 app/ --count --exit-zero --max-complexity=10 --max-line-length=100 --statistics
+          flake8 app/ \
+            --count \
+            --exit-zero \
+            --max-complexity=10 \
+            --max-line-length=100 \
+            --statistics
 
       - name: Run tests
-  run: |
-    pip install pytest pytest-asyncio httpx
-    PYTHONPATH=. pytest tests/ -v
+        run: |
+          pip install pytest pytest-asyncio httpx
+          PYTHONPATH=. pytest tests/ -v
 
-  # ─────────────────────────────────────────────
-  # Job 3: Web — TypeScript type-check
-  # ─────────────────────────────────────────────
+
+  # ============================================================
+  # JOB 3: WEB
+  # ============================================================
+
   web-ci:
-    name: Web — Type-check
+    name: Web — Type-check & Build
     runs-on: ubuntu-latest
 
     defaults:
@@ -144,6 +161,7 @@ jobs:
         working-directory: apps/web
 
     steps:
+
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -160,5 +178,5 @@ jobs:
       - name: TypeScript type-check
         run: npx tsc --noEmit
 
-      - name: Build (verify Vite builds cleanly)
+      - name: Build
         run: npm run build
