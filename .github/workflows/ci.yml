@@ -1,31 +1,32 @@
 # CI — runs on every push and pull request to main.
-# Runs API, ML Service, and Web checks.
+# Fails fast: if any job fails, downstream jobs don't run.
 
 name: CI
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
-    branches:
-      - main
+    branches: [main]
 
-# Cancel an older run when a newer commit is pushed.
+# Cancel in-progress runs when a new commit is pushed to the same branch.
+# Saves runner minutes — no point finishing a test run for a commit
+# that's already been superseded.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
 
-  # ============================================================
-  # JOB 1: API
-  # ============================================================
-
+  # ─────────────────────────────────────────────
+  # Job 1: API — TypeScript type-check + tests
+  # ─────────────────────────────────────────────
   api-ci:
     name: API — Type-check & Tests
     runs-on: ubuntu-latest
 
+    # Spin up Postgres and Redis as service containers.
+    # They start before the job steps and are reachable at localhost.
     services:
       postgres:
         image: postgres:16-alpine
@@ -57,9 +58,11 @@ jobs:
 
     steps:
 
+      # Checkout repository
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # Node.js
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -67,24 +70,32 @@ jobs:
           cache: npm
           cache-dependency-path: apps/api/package-lock.json
 
+      # Install dependencies
       - name: Install dependencies
         run: npm ci
 
+      # Prisma
       - name: Generate Prisma client
         run: npx prisma generate
         env:
           DATABASE_URL: postgresql://testuser:testpass@localhost:5432/cloudcost_test?schema=public
 
+      # Database migrations
       - name: Run database migrations
         run: npx prisma migrate deploy
         env:
           DATABASE_URL: postgresql://testuser:testpass@localhost:5432/cloudcost_test?schema=public
 
+      # TypeScript
       - name: TypeScript type-check
         run: npx tsc --noEmit -p tsconfig.json
 
+      # Tests
+      #
+      # --forceExit is intentional here because the tests currently
+      # leave a Redis connection open after Jest finishes.
       - name: Run tests
-        run: npm test
+        run: npm test -- --forceExit
         env:
           NODE_ENV: test
           DATABASE_URL: postgresql://testuser:testpass@localhost:5432/cloudcost_test?schema=public
@@ -96,10 +107,9 @@ jobs:
           ML_SERVICE_URL: http://localhost:8000
 
 
-  # ============================================================
-  # JOB 2: ML SERVICE
-  # ============================================================
-
+  # ─────────────────────────────────────────────
+  # Job 2: ML Service — Python lint + tests
+  # ─────────────────────────────────────────────
   ml-ci:
     name: ML Service — Lint & Tests
     runs-on: ubuntu-latest
@@ -110,9 +120,11 @@ jobs:
 
     steps:
 
+      # Checkout repository
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # Python
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -120,38 +132,31 @@ jobs:
           cache: pip
           cache-dependency-path: apps/ml-service/requirements.txt
 
+      # Install Python dependencies
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      # Flake8
       - name: Lint with flake8
         run: |
           pip install flake8
 
-          # Stop on syntax errors and undefined names
-          flake8 app/ \
-            --count \
-            --select=E9,F63,F7,F82 \
-            --show-source \
-            --statistics
+          # Stop if there are syntax errors or undefined names
+          flake8 app/ --count --select=E9,F63,F7,F82 --show-source --statistics
 
           # Warn on style issues but don't fail
-          flake8 app/ \
-            --count \
-            --exit-zero \
-            --max-complexity=10 \
-            --max-line-length=100 \
-            --statistics
+          flake8 app/ --count --exit-zero --max-complexity=10 --max-line-length=100 --statistics
 
+      # Python tests
       - name: Run tests
         run: |
           pip install pytest pytest-asyncio httpx
           PYTHONPATH=. pytest tests/ -v
 
 
-  # ============================================================
-  # JOB 3: WEB
-  # ============================================================
-
+  # ─────────────────────────────────────────────
+  # Job 3: Web — TypeScript type-check + build
+  # ─────────────────────────────────────────────
   web-ci:
     name: Web — Type-check & Build
     runs-on: ubuntu-latest
@@ -162,9 +167,11 @@ jobs:
 
     steps:
 
+      # Checkout repository
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # Node.js
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -172,11 +179,14 @@ jobs:
           cache: npm
           cache-dependency-path: apps/web/package-lock.json
 
+      # Install dependencies
       - name: Install dependencies
         run: npm ci
 
+      # TypeScript
       - name: TypeScript type-check
         run: npx tsc --noEmit
 
+      # Vite production build
       - name: Build
         run: npm run build
