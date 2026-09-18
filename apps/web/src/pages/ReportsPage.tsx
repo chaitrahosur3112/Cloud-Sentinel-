@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useReports, useGenerateReport } from "../queries/report.queries";
+import { api } from "../lib/axios";
 import { Card }   from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { Modal }  from "../components/ui/Modal";
@@ -17,6 +18,65 @@ export function ReportsPage() {
   const { mutate: generate, isLoading: generating }       = useGenerateReport();
   const [modalOpen, setModalOpen]                         = useState(false);
   const [form, setForm] = useState({ type: "COST_SUMMARY", format: "PDF", from: "", to: "" });
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+
+  const getMimeType = (format: string) => {
+    switch (format) {
+      case "PDF":
+        return "application/pdf";
+      case "EXCEL":
+        return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+      case "CSV":
+        return "text/csv";
+      default:
+        return "application/octet-stream";
+    }
+  };
+
+  const getFileExtension = (format: string) => {
+    switch (format) {
+      case "PDF":
+        return "pdf";
+      case "EXCEL":
+        return "xlsx";
+      case "CSV":
+        return "csv";
+      default:
+        return "bin";
+    }
+  };
+
+  const handleDownload = async (id: string, format: string) => {
+    try {
+      setDownloadingId(id);
+      const response = await api.get(`/reports/${id}/download`, {
+        responseType: "blob",
+      });
+
+      const contentType =
+        typeof response.headers["content-type"] === "string"
+          ? response.headers["content-type"]
+          : getMimeType(format);
+
+      const blob = new Blob([response.data], {
+        type: contentType,
+      });
+
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `cloudcost-report.${getFileExtension(format)}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Report download failed:", error);
+      alert("Failed to download report. Please try again.");
+    } finally {
+      setDownloadingId(null);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -64,11 +124,18 @@ export function ReportsPage() {
                     {new Date(r.createdAt).toLocaleString()}
                   </td>
                   <td className="px-6 py-4">
-                    <a href={`/api/v1/reports/${r.id}/download`}
-                      className="text-brand-600 hover:underline text-sm font-medium"
-                      download>
-                      Download
-                    </a>
+                    <button
+                      type="button"
+                      disabled={downloadingId === r.id}
+                      onClick={() => handleDownload(r.id, r.format)}
+                      className={`text-brand-600 hover:underline text-sm font-medium ${
+                        downloadingId === r.id
+                          ? "opacity-50 cursor-not-allowed"
+                          : "cursor-pointer"
+                      }`}
+                    >
+                      {downloadingId === r.id ? "Downloading..." : "Download"}
+                    </button>
                   </td>
                 </tr>
               ))}
